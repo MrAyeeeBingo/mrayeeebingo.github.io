@@ -86,6 +86,7 @@ body::after {
 }
 
 .menu-icon {
+    display: none;
     margin: auto;
     margin-right: 10px;
 }
@@ -140,6 +141,7 @@ body::after {
 }
 
 .bingo-wins {
+    display: none;
     background-color: #29292980;
     padding: 1em;
     border-radius: .5rem;
@@ -298,7 +300,8 @@ body::after {
     }
 } */
 
-@media (orientation: landscape) {
+
+/* @media (orientation: landscape) {
 
     .hero-container {
         flex-direction: row-reverse;
@@ -309,8 +312,8 @@ body::after {
 
     .info-sidebar {
         width: 40vw;
-        /* max-width: 25vw; */
-        /* overflow: hidden; */
+        max-width: 25vw;
+        overflow: hidden;
     }
 
     .board {
@@ -329,5 +332,6 @@ body::after {
     }
 
     .bingo-wins {}
-}
+} 
+ */
 
