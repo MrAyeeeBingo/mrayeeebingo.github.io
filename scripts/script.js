@@ -28,7 +28,9 @@ const itemPool = [
     "Starts a new game (surely he will finish it!)",
     "Pee break",
     "Watches T-Pain's stream",
-    "Insults a fictional character"
+    "Insults a fictional character",
+    "Random Jurassic Park trivia",
+    "Gives animal facts"
 ]
 
 // lazy brute force because i can't be assed to think rn
@@ -36,29 +38,29 @@ const winConditions = {
     verticalWins: [
         ["cell00", "cell05", "cell10", "cell15", "cell20"],
         ["cell01", "cell06", "cell11", "cell16", "cell21"],
-        ["cell02", "cell07",           "cell17", "cell22"],
+        ["cell02", "cell07", "cell12", "cell17", "cell22"],
         ["cell03", "cell08", "cell13", "cell18", "cell23"],
         ["cell04", "cell09", "cell14", "cell19", "cell24"] 
     ],
     horizontalWins: [
         ["cell00","cell01","cell02","cell03","cell04"],
         ["cell05","cell06","cell07","cell08","cell09"],
-        ["cell10","cell11",        ,"cell13","cell14"],
+        ["cell10","cell11","cell12","cell13","cell14"],
         ["cell15","cell16","cell17","cell18","cell19"],
         ["cell20","cell21","cell22","cell23","cell24"]
     ],
     diagonalWins: [
-        ["cell00","cell06","cell18","cell24"],
-        ["cell20","cell16","cell08","cell04"]
+        ["cell00","cell06","cell12","cell18","cell24"],
+        ["cell20","cell16","cell12","cell08","cell04"]
     ]
 }
 
-const menuButtonElement = document.querySelector('.menu-icon')
-const cellElementArray = document.querySelectorAll('.cell')
-const boardButtonElement = document.querySelector('.generate-button')
-const boardElement = document.querySelector('.board')
-const infoSidebarElement = document.querySelector('.info-sidebar')
-const bingoListElements = {
+const pageElements = {
+    menuButton: document.querySelector('.menu-icon'),
+    cellList: document.querySelectorAll('.cell'),
+    boardButton: document.querySelector('.generate-button'),
+    board: document.querySelector('.board'),
+    infoSidebar: document.querySelector('.info-sidebar'),
     bingoWins: document.querySelector('.bingo-wins'),
     bingoFreeSpace: document.getElementById('bingo-free-space-rule'),
     bingoNoFreeSpace: document.getElementById('bingo-no-free-space-rule'),
@@ -67,19 +69,17 @@ const bingoListElements = {
     bingoDiagonal: document.getElementById('bingo-diagonal-rule'),
     bingoFull: document.getElementById('bingo-full-bingo-rule'),
 }
-let currentBingos = {
-    any: false, freeSpace: false, noFreeSpace: false, vertical: false, horizontal: false, diagonal: false, full: false
-}
-
+let clickedCells  = ["cell12"]
+let bingoCells = []
 
 init()
 
 function init() {
-    menuButtonElement.addEventListener('click', () => menuButtonClickHandler())
-    for (let cell of cellElementArray) {
+    // pageElements.menuButton.addEventListener('click', () => menuButtonClickHandler())
+    for (let cell of pageElements.cellList) {
         cell.addEventListener('click', () => cellClickHandler(cell))
     }
-    boardButtonElement.addEventListener('click', () => boardButtonClickHandler())
+    pageElements.boardButton.addEventListener('click', () => boardButtonClickHandler())
 }
 
 const menuButtonClickHandler = () => {
@@ -88,50 +88,66 @@ const menuButtonClickHandler = () => {
 }
 
 const boardButtonClickHandler = () => {
+    const button = pageElements.boardButton;
     populateBoard()
-    let isClicked = boardElement.classList.contains('clicked')
+    let isClicked = button.classList.contains('clicked')
     if (!isClicked) {
-        boardButtonElement.textContent = "Regenerate Board"
-        boardButtonElement.classList.add('clicked')
-        boardElement.style.display = 'grid'
-        infoSidebarElement.style.display = 'flex'
+        button.textContent = "Regenerate Board"
+        button.classList.add('clicked')
+        pageElements.board.style.display = 'grid'
+        pageElements.infoSidebar.style.display = 'flex'
     }
 }
 
 const cellClickHandler = cell => {
     const isClicked = cell.classList.contains('clicked')
-    if (isClicked)
-        cell.classList.remove('clicked')
-    else
+    if (!isClicked) {
         cell.classList.add('clicked')
-    checkForBingos()
+        clickedCells.push(cell.id)
+    } else {
+        cell.classList.remove('clicked')
+        clickedCells.splice(clickedCells.indexOf(cell.id), 1)
+    }
+    checkForBingos(cell.id)
 }
 
 const populateBoard = () => {
     shuffle(itemPool)
     let i = 0
-    for (let cell of cellElementArray) {
+    for (let cell of pageElements.cellList) {
         cell.textContent = itemPool[i++]
         if (cell.classList.contains('clicked')) {
             cell.classList.remove('clicked')
         }
     }
+    clickedCells = ["cell12"]
+    bingoCells = []
+    updateBingoCells()
 }
 
-const checkForBingos = () => {
+const checkForBingos = cellId => {
     // const clickedCells = [...document.getElementsByClassName('cell clicked')].map(cell => cell.id)
-
-    // for (let winCheck of winConditions.verticalWins) {
-    //     const hasBingo = winCheck.every(x => clickedCells.includes(x))
-    //     if (hasBingo) {
-    //         currentBingos
-    //     }
-    //     // console.log(`${winCheck} has bingo: ${hasBingo}`)
-    // }
+    const checkWin = winType => winConditions[winType].filter(combination => combination.every(cell => clickedCells.includes(cell)))
     
+    const verticalBingos = checkWin("verticalWins")
+    const horizontalBingos = checkWin("horizontalWins")
+    const diagonalBingos = checkWin("diagonalWins")
 
+    bingoCells = [...new Set([...verticalBingos, ...horizontalBingos, ...diagonalBingos].flat(2))]
+    updateBingoCells()
 }
 
+const updateBingoCells = () => {
+    // console.log(bingoCells)
+    const previousBingoCellElements = document.querySelectorAll('.bingo')
+    for (const el of previousBingoCellElements) {
+        el.classList.remove('bingo')
+    }
+    const currentBingoCellElements = bingoCells.map(cellId => document.querySelector(`#${cellId}`))
+    for (const el of currentBingoCellElements) {
+        el.classList.add('bingo')
+    }
+}
 
 const shuffle = arr => {
     let i = arr.length
