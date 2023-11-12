@@ -1,4 +1,4 @@
-const itemPool = [
+let itemPool = [
     "Brings up 9/11",
     "Talks about backrooms",
     "Mentions bigfoot",
@@ -58,7 +58,7 @@ const winConditions = {
 const pageElements = {
     menuButton: document.querySelector('.menu-icon'),
     cellList: document.querySelectorAll('.cell'),
-    boardButton: document.querySelector('.generate-button'),
+    generateButton: document.querySelector('.generate-button'),
     board: document.querySelector('.board'),
     infoSidebar: document.querySelector('.info-sidebar'),
     bingoWins: document.querySelector('.bingo-wins'),
@@ -72,14 +72,13 @@ const pageElements = {
 let clickedCells  = ["cell12"]
 let bingoCells = []
 
-init()
 
 function init() {
     // pageElements.menuButton.addEventListener('click', () => menuButtonClickHandler())
     for (let cell of pageElements.cellList) {
         cell.addEventListener('click', () => cellClickHandler(cell))
     }
-    pageElements.boardButton.addEventListener('click', () => boardButtonClickHandler())
+    pageElements.generateButton.addEventListener('click', () => generateButtonClickHandler())
 }
 
 const menuButtonClickHandler = () => {
@@ -87,15 +86,14 @@ const menuButtonClickHandler = () => {
     console.log("menu button clicked")
 }
 
-const boardButtonClickHandler = () => {
-    const button = pageElements.boardButton;
-    populateBoard()
+const generateButtonClickHandler = () => {
+    const button = pageElements.generateButton;
+    randomizeBoard()
     let isClicked = button.classList.contains('clicked')
     if (!isClicked) {
         button.textContent = "Regenerate Board"
         button.classList.add('clicked')
         pageElements.board.style.display = 'grid'
-        pageElements.infoSidebar.style.display = 'flex'
     }
 }
 
@@ -111,8 +109,7 @@ const cellClickHandler = cell => {
     checkForBingos(cell.id)
 }
 
-const populateBoard = () => {
-    shuffle(itemPool)
+const setCellContents = () => {
     let i = 0
     for (let cell of pageElements.cellList) {
         cell.textContent = itemPool[i++]
@@ -120,9 +117,15 @@ const populateBoard = () => {
             cell.classList.remove('clicked')
         }
     }
+}
+
+const randomizeBoard = () => {
+    shuffle(itemPool)
+    setCellContents()
     clickedCells = ["cell12"]
     bingoCells = []
     updateBingoCells()
+    exportBoardToURL()
 }
 
 const checkForBingos = cellId => {
@@ -138,7 +141,6 @@ const checkForBingos = cellId => {
 }
 
 const updateBingoCells = () => {
-    // console.log(bingoCells)
     const previousBingoCellElements = document.querySelectorAll('.bingo')
     for (const el of previousBingoCellElements) {
         el.classList.remove('bingo')
@@ -147,6 +149,25 @@ const updateBingoCells = () => {
     for (const el of currentBingoCellElements) {
         el.classList.add('bingo')
     }
+}
+
+const exportBoardToURL = () => {
+    const stringifiedItems = itemPool.toString()
+    const encodedItems = encodeURIComponent(btoa(stringifiedItems))
+    // console.log(`unencoded: ${stringifiedItems}\nencoded items: ${encodedItems}`)
+    currentURL.searchParams.set('board', encodedItems)
+    window.history.replaceState({}, document.title, currentURL.toString())
+}
+
+const importBoardFromURL = url => {
+    const decodedItems = atob(decodeURIComponent(url))
+
+    pageElements.generateButton.textContent = "Regenerate Board"
+    pageElements.generateButton.classList.add('clicked')
+    pageElements.board.style.display = 'grid'
+    
+    itemPool = decodedItems.split(',')
+    setCellContents()
 }
 
 const shuffle = arr => {
@@ -158,3 +179,16 @@ const shuffle = arr => {
     }
   return arr
 }
+
+const currentURL = new URL(window.location.href)
+window.addEventListener('load', () => {
+    if (currentURL.searchParams.has('board')) {
+        try {
+            importBoardFromURL(currentURL.searchParams.get('board'))
+        }
+        catch (e) {
+            console.error(`Failed to parse board from URL parameters: ${currentURL.searchParams.get('board')}`)
+        }
+    }
+    init()
+})
