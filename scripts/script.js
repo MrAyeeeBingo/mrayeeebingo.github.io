@@ -1,4 +1,4 @@
-let itemPool = [
+const itemPool = [
     "Brings up 9/11",
     "Talks about backrooms",
     "Mentions bigfoot",
@@ -30,29 +30,42 @@ let itemPool = [
     "Watches T-Pain's stream",
     "Insults a fictional character",
     "Random Jurassic Park trivia",
-    "Gives animal facts"
+    "Gives animal facts",
+    "Stays on Live Animal Cam for 30+ Minutes",
+    "Argues with nobody"
 ]
 
-// lazy brute force because i can't be assed to think rn
-const winConditions = {
-    verticalWins: [
-        ["cell00", "cell05", "cell10", "cell15", "cell20"],
-        ["cell01", "cell06", "cell11", "cell16", "cell21"],
-        ["cell02", "cell07", "cell12", "cell17", "cell22"],
-        ["cell03", "cell08", "cell13", "cell18", "cell23"],
-        ["cell04", "cell09", "cell14", "cell19", "cell24"] 
-    ],
-    horizontalWins: [
-        ["cell00","cell01","cell02","cell03","cell04"],
-        ["cell05","cell06","cell07","cell08","cell09"],
-        ["cell10","cell11","cell12","cell13","cell14"],
-        ["cell15","cell16","cell17","cell18","cell19"],
-        ["cell20","cell21","cell22","cell23","cell24"]
-    ],
-    diagonalWins: [
-        ["cell00","cell06","cell12","cell18","cell24"],
-        ["cell20","cell16","cell12","cell08","cell04"]
-    ]
+const itemMap = itemPool.reduce((map, e, i) => map.set(i, e), new Map())
+
+let currentBoardConfiguration = [...itemMap.entries()].map(([key, value]) => key)
+
+const rows = [
+    [0, 1, 2, 3, 4 ],
+    [5, 6, 7, 8, 9 ],
+    [10,11,12,13,14],
+    [15,16,17,18,19],
+    [20,21,22,23,24]
+]
+const columns = [
+    [0,5,10,15,20],
+    [1,6,11,16,21],
+    [2,7,12,17,22],
+    [3,8,13,18,23],
+    [4,9,14,19,24]
+]
+const diagonals = [
+    [0,6,12,18,24],
+    [4,8,12,16,20]
+]
+
+const bingoLookup = id => {
+    const row = parseInt(id / 5)
+    const col = id % 5
+    if (!diagonals.flat().includes(id))
+        return [rows[row], columns[col]]
+    if (id == 12)
+        return [rows[row], columns[col], diagonals[0], diagonals[1]]
+    return [rows[row], columns[col], diagonals[0].includes(id) ? diagonals[0] : diagonals[1]]
 }
 
 const pageElements = {
@@ -69,21 +82,13 @@ const pageElements = {
     bingoDiagonal: document.getElementById('bingo-diagonal-rule'),
     bingoFull: document.getElementById('bingo-full-bingo-rule'),
 }
-let clickedCells  = ["cell12"]
-let bingoCells = []
-
 
 function init() {
-    // pageElements.menuButton.addEventListener('click', () => menuButtonClickHandler())
-    for (let cell of pageElements.cellList) {
+    for (const cell of pageElements.cellList) {
         cell.addEventListener('click', () => cellClickHandler(cell))
     }
     pageElements.generateButton.addEventListener('click', () => generateButtonClickHandler())
-}
-
-const menuButtonClickHandler = () => {
-    menuButtonElement.classList.add('clicked')
-    console.log("menu button clicked")
+    document.querySelector('.main-icon').addEventListener('click', () => resetPage())
 }
 
 const generateButtonClickHandler = () => {
@@ -101,73 +106,77 @@ const cellClickHandler = cell => {
     const isClicked = cell.classList.contains('clicked')
     if (!isClicked) {
         cell.classList.add('clicked')
-        clickedCells.push(cell.id)
     } else {
         cell.classList.remove('clicked')
-        clickedCells.splice(clickedCells.indexOf(cell.id), 1)
+        cell.classList.remove('bingo')
     }
-    checkForBingos(cell.id)
+    updateBingoCells(cell)
+}
+
+const randomizeBoard = () => {
+    shuffle(currentBoardConfiguration)
+    setCellContents()
+    document.querySelectorAll('.bingo').forEach(cell => cell.classList.remove('bingo'))
+    exportBoardToURL()
 }
 
 const setCellContents = () => {
     let i = 0
     for (let cell of pageElements.cellList) {
-        cell.textContent = itemPool[i++]
+        cell.textContent = itemMap.get(parseInt(currentBoardConfiguration[i++]))
         if (cell.classList.contains('clicked')) {
             cell.classList.remove('clicked')
         }
     }
 }
 
-const randomizeBoard = () => {
-    shuffle(itemPool)
-    setCellContents()
-    clickedCells = ["cell12"]
-    bingoCells = []
-    updateBingoCells()
-    exportBoardToURL()
-}
-
-const checkForBingos = cellId => {
-    // const clickedCells = [...document.getElementsByClassName('cell clicked')].map(cell => cell.id)
-    const checkWin = winType => winConditions[winType].filter(combination => combination.every(cell => clickedCells.includes(cell)))
-    
-    const verticalBingos = checkWin("verticalWins")
-    const horizontalBingos = checkWin("horizontalWins")
-    const diagonalBingos = checkWin("diagonalWins")
-
-    bingoCells = [...new Set([...verticalBingos, ...horizontalBingos, ...diagonalBingos].flat(2))]
-    updateBingoCells()
-}
-
-const updateBingoCells = () => {
-    const previousBingoCellElements = document.querySelectorAll('.bingo')
-    for (const el of previousBingoCellElements) {
-        el.classList.remove('bingo')
+const cellIsBingo = cell => {
+    const bingoNeighbors = bingoLookup(parseInt(cell.id.slice(-2)))
+        .map(arr => arr.map(num => document.getElementById(`cell${num.toString().padStart(2,'0')}`)))
+    for (const set of bingoNeighbors) {
+        if (set.every(el => el.classList.contains('clicked') || el.classList.contains('free-space'))) {
+            return true
+        }
     }
-    const currentBingoCellElements = bingoCells.map(cellId => document.querySelector(`#${cellId}`))
-    for (const el of currentBingoCellElements) {
-        el.classList.add('bingo')
+    return false
+}
+
+const updateBingoCells = cell => {
+    const id = parseInt(cell.id.slice(-2))
+    const bingoNeighbors = bingoLookup(id)
+    .flat()
+    .map(num => document.getElementById(`cell${num.toString().padStart(2,'0')}`))
+    for (const neighbor of bingoNeighbors) {
+        if (cellIsBingo(neighbor)) {
+            neighbor.classList.add('bingo')
+        } else {
+            neighbor.classList.remove('bingo')
+        }
     }
 }
 
 const exportBoardToURL = () => {
-    const stringifiedItems = itemPool.toString()
-    const encodedItems = encodeURIComponent(btoa(stringifiedItems))
-    // console.log(`unencoded: ${stringifiedItems}\nencoded items: ${encodedItems}`)
-    currentURL.searchParams.set('board', encodedItems)
+    const boardState = encodeURIComponent(btoa(currentBoardConfiguration.toString()))
+    currentURL.searchParams.set('board', boardState)
     window.history.replaceState({}, document.title, currentURL.toString())
 }
 
 const importBoardFromURL = url => {
-    const decodedItems = atob(decodeURIComponent(url))
+    const decoded = atob(decodeURIComponent(url)).split(',')
 
     pageElements.generateButton.textContent = "Regenerate Board"
     pageElements.generateButton.classList.add('clicked')
     pageElements.board.style.display = 'grid'
-    
-    itemPool = decodedItems.split(',')
+
+    currentBoardConfiguration = [...decoded]
     setCellContents()
+}
+
+const resetPage = () => {
+    currentURL.searchParams.delete('board')
+    // window.history.replaceState({}, document.title, currentURL.toString())
+    window.location.href = currentURL.toString()
+    // window.location.reload()
 }
 
 const shuffle = arr => {
