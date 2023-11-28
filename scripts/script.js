@@ -21,7 +21,7 @@ const itemPool = [
     "Tech issues",
     "Scrolls through Just Chatting",
     "Pops a gummy",
-    "Mentions the Foo Fighter's last good album",
+    //"Mentions the Foo Fighter's last good album",
     "Joins a voice call",
     "Repeats something over and over",
     "Mentions something that freaks him out",
